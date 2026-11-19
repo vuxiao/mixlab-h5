@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+:root {
+  --bg-espresso: #120b08;
+  --bg-mahogany: #1c120e;
+  --bg-velvet: #261813;
+  --cream-paper: #f5ebd6;
+  --cream-muted: #c7b69c;
+  --copper-line: #c89b54;
+  --amber-neon: #e5a93c;
+  --wine-crimson: #8f1d2c;
+  --wine-glow: #c93246;
+  --coral-neon: #e85d4a;
+  --ink-dark: #1a110d;
+  --font-editorial: "Playfair Display", "Bodoni MT", "Didot", "Songti SC", "Noto Serif SC", "STSong", Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-espresso);
+  color: var(--cream-paper);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(143, 29, 44, 0.22), transparent 46%),
+    radial-gradient(circle at 82% 80%, rgba(229, 169, 60, 0.14), transparent 50%),
+    #0b0705;
+}
+
+/* 复古胶片微粒质感 */
+.speakeasy-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  z-index: 1;
+  background-image: radial-gradient(#f5ebd6 0.7px, transparent 0.7px);
+  background-size: 16px 16px;
+}
+
+.font-editorial {
+  font-family: var(--font-editorial);
+}
+
+.font-mono-tech {
+  font-family: var(--font-mono);
+}
+
+/* 安全区与隐藏滚动条 */
+.safe-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 复古微发光按钮与细线 */
+.editorial-border {
+  border: 1px solid rgba(200, 155, 84, 0.28);
+}
+
+.editorial-card {
+  background: linear-gradient(165deg, rgba(38, 24, 19, 0.92), rgba(22, 13, 10, 0.96));
+  border: 1px solid rgba(200, 155, 84, 0.26);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(245, 235, 214, 0.06);
+}
+
+.neon-amber-text {
+  text-shadow: 0 0 14px rgba(229, 169, 60, 0.45);
+}
+
+/* 摇晃酒杯动效 */
+@keyframes cocktail-shake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-7px, -5px) rotate(-6deg); }
+  30% { transform: translate(7px, 3px) rotate(6.5deg); }
+  45% { transform: translate(-6px, 4px) rotate(-5deg); }
+  60% { transform: translate(6px, -4px) rotate(5.5deg); }
+  75% { transform: translate(-4px, 2px) rotate(-3deg); }
+  90% { transform: translate(3px, -2px) rotate(2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.animate-cocktail-shake {
+  animation: cocktail-shake 0.34s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+/* 倾倒液流闪烁 */
+@keyframes pour-stream {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -28; }
+}
+
+.animate-pour-stream {
+  stroke-dasharray: 10 4;
+  animation: pour-stream 0.24s linear infinite;
+}
+
+/* 经典印章盖章动效 */
+@keyframes stamp-slam {
+  0% {
+    opacity: 0;
+    transform: scale(2.1) rotate(-18deg);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(0.92) rotate(-9deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-11deg);
+  }
+}
+
+.animate-stamp-slam {
+  animation: stamp-slam 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 柔和漂浮 */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-gentle-float {
+  animation: gentle-float 3.2s ease-in-out infinite;
+}
+
+/* 弹窗平滑入场 */
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
