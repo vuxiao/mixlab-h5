@@ -301,16 +301,16 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
         </div>
       </div>
 
-      {/* 右侧配方层小胶囊 & 撤销/重置操作 */}
-      <div className="absolute right-3 top-2 bottom-2 flex flex-col justify-between items-end z-10">
-        <div className="flex items-center gap-1.5">
+      {/* 右侧配方层小胶囊 & 撤销/重置操作（紧凑靠边，避开宽口杯边缘与青柠装饰） */}
+      <div className="absolute right-2.5 top-2 bottom-2 flex flex-col justify-between items-end z-10 pointer-events-none">
+        <div className="flex items-center gap-1 pointer-events-auto">
           {totalMl > 0 && (
             <>
               <button
                 type="button"
                 onClick={onUndoPour}
                 aria-label="撤销上一倒"
-                className="px-2 py-1 rounded-full text-[10px] font-medium bg-[#1C120E]/90 border border-[#C89B54]/30 text-[#C7B69C] hover:text-[#F5EBD6] active:scale-95 transition"
+                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#1C120E]/92 border border-[#C89B54]/35 text-[#C7B69C] hover:text-[#F5EBD6] active:scale-95 transition"
               >
                 撤销
               </button>
@@ -318,7 +318,7 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
                 type="button"
                 onClick={onClearGlass}
                 aria-label="清空酒杯"
-                className="px-2 py-1 rounded-full text-[10px] font-medium bg-[#2C1317]/90 border border-[#8F1D2C]/50 text-[#F2B5BD] hover:text-white active:scale-95 transition"
+                className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#2C1317]/92 border border-[#8F1D2C]/55 text-[#F2B5BD] hover:text-white active:scale-95 transition"
               >
                 倒掉
               </button>
@@ -326,8 +326,8 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
           )}
         </div>
 
-        {/* 当前原料色点清单 */}
-        <div className="flex flex-col items-end gap-1 max-w-[104px] pointer-events-none">
+        {/* 当前原料色点清单（中下偏右，避让高杯口与柠檬片） */}
+        <div className="flex flex-col items-end gap-1 max-w-[88px] mt-10 mb-auto">
           {layers
             .slice()
             .reverse()
@@ -335,26 +335,26 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
             .map((layer) => (
               <div
                 key={layer.ingredientId}
-                className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-[#160E0B]/80 border border-[#C89B54]/20"
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#160E0B]/88 border border-[#C89B54]/22 shadow-sm"
               >
-                <span className="text-[10px] text-[#E6D9C3] truncate max-w-[60px]">
+                <span className="text-[9.5px] text-[#E6D9C3] truncate max-w-[48px]">
                   {layer.name.replace(/伦敦干|古巴|冰川|波本|意式|鲜榨|红宝石|鲜甜日落|奎宁|冰镇|精酿黑/, '')}
                 </span>
-                <span className="font-mono-tech text-[9px] text-[#C89B54]">{layer.ml}</span>
+                <span className="font-mono-tech text-[8.5px] text-[#C89B54]">{layer.ml}</span>
                 <span
-                  className="w-2 h-2 rounded-full shrink-0 border border-white/30"
+                  className="w-1.5 h-1.5 rounded-full shrink-0 border border-white/35"
                   style={{ backgroundColor: layer.color }}
                 />
               </div>
             ))}
           {layers.length > 5 && (
-            <span className="text-[9px] text-[#C89B54]">+{layers.length - 5} 种原料</span>
+            <span className="text-[9px] text-[#C89B54]">+{layers.length - 5} 种</span>
           )}
         </div>
 
-        <div className="pointer-events-none flex items-center gap-1">
+        <div className="flex items-center gap-1">
           {hasBubbles && (
-            <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#162730]/80 border border-[#72C8E8]/40 text-[#A8E5FA]">
+            <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#162730]/85 border border-[#72C8E8]/40 text-[#A8E5FA]">
               ✦ 气泡激活
             </span>
           )}
@@ -417,16 +417,77 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
               <stop offset="100%" stopColor="#F5EBD6" stopOpacity="0.2" />
             </linearGradient>
 
-            <radialGradient id="sphereIceGrad" cx="35%" cy="32%" r="65%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.62" />
-              <stop offset="65%" stopColor="#D6F0FF" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.38" />
+            {/* 手凿水晶大冰球高透折射渐变 */}
+            <radialGradient id="sphereIceGrad" cx="32%" cy="28%" r="68%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.92" />
+              <stop offset="32%" stopColor="#E6F7FF" stopOpacity="0.52" />
+              <stop offset="70%" stopColor="#A9D8F2" stopOpacity="0.28" />
+              <stop offset="92%" stopColor="#FFFFFF" stopOpacity="0.58" />
+              <stop offset="100%" stopColor="#D7EEFF" stopOpacity="0.72" />
             </radialGradient>
+
+            {/* 复古胡桃木吧台台面光晕渐变 */}
+            <linearGradient id="barCounterSurface" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#3B2418" stopOpacity="0.58" />
+              <stop offset="45%" stopColor="#1D110C" stopOpacity="0.82" />
+              <stop offset="100%" stopColor="#0E0806" stopOpacity="0" />
+            </linearGradient>
+
+            <linearGradient id="brassCoasterGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#6D4B22" />
+              <stop offset="35%" stopColor="#D9AE62" />
+              <stop offset="55%" stopColor="#F2D28B" />
+              <stop offset="100%" stopColor="#6D4B22" />
+            </linearGradient>
           </defs>
 
-          {/* 吧台桌面倒影椭盘 */}
-          <ellipse cx="120" cy="242" rx="64" ry="8" fill="#000000" opacity="0.48" />
-          <ellipse cx="120" cy="242" rx="46" ry="4" fill={auraColor} opacity="0.16" />
+          {/* 复古胡桃木吧台台面弧线与反光 */}
+          <g aria-hidden="true">
+            <path
+              d="M -45 232 Q 120 218 285 232 L 285 270 L -45 270 Z"
+              fill="url(#barCounterSurface)"
+            />
+            <path
+              d="M -38 232 Q 120 218 278 232"
+              fill="none"
+              stroke="#C89B54"
+              strokeOpacity="0.34"
+              strokeWidth="1.2"
+            />
+            <path
+              d="M 16 234 Q 120 226 224 234"
+              fill="none"
+              stroke="#F5EBD6"
+              strokeOpacity="0.16"
+              strokeWidth="0.9"
+            />
+          </g>
+
+          {/* 雕纹黄铜杯垫（Brass Coaster） */}
+          <g aria-hidden="true">
+            <ellipse cx="120" cy="242" rx="68" ry="11" fill="#080403" opacity="0.72" />
+            <ellipse
+              cx="120"
+              cy="240"
+              rx="62"
+              ry="9.5"
+              fill="#22140D"
+              stroke="url(#brassCoasterGrad)"
+              strokeWidth="1.8"
+            />
+            <ellipse
+              cx="120"
+              cy="240"
+              rx="53"
+              ry="7"
+              fill="none"
+              stroke="#E5A93C"
+              strokeOpacity="0.45"
+              strokeWidth="0.9"
+              strokeDasharray="3 3"
+            />
+            <ellipse cx="120" cy="239" rx="42" ry="4.5" fill={auraColor} opacity="0.2" />
+          </g>
 
           {/* 后置杯口装饰物：柠檬轮片 / 薄荷 / 迷迭香 */}
           {garnishes.includes('lime') && (
@@ -559,31 +620,87 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
               )}
             </g>
 
-            {/* 冰块层：方冰 / 大冰球 */}
-            {iceType === 'sphere' && (
-              <g
-                className="animate-gentle-float"
-                style={{
-                  transform: `translate(120px, ${
-                    totalMl > 0
-                      ? Math.min(geo.bottomY - 29, Math.max(geo.topY + 34, liquidTopY + 30))
-                      : geo.bottomY - 30
-                  }px)`,
-                  transition: 'transform 320ms ease-out',
-                }}
-              >
-                <circle
-                  r={glassId === 'martini' ? 21 : 27}
-                  fill="url(#sphereIceGrad)"
-                  stroke="rgba(255,255,255,0.58)"
-                  strokeWidth="1.2"
-                />
-                <ellipse cx="-8" cy="-9" rx="7" ry="4" fill="#FFFFFF" opacity="0.52" transform="rotate(-28 -8 -9)" />
-              </g>
-            )}
+            {/* 冰块层：匠人大冰球（外层专职定位平移，内层专职漂浮动画，彻底修复 transform 冲突） */}
+            {iceType === 'sphere' && (() => {
+              const sphereR = glassId === 'martini' ? 23 : 29;
+              const targetY =
+                totalMl > 0
+                  ? Math.min(geo.bottomY - sphereR - 4, Math.max(geo.topY + sphereR + 5, liquidTopY + sphereR + 2))
+                  : geo.bottomY - sphereR - 5;
+              return (
+                <g
+                  data-testid="ice-sphere-outer"
+                  style={{
+                    transform: `translate(120px, ${targetY}px)`,
+                    transition: 'transform 320ms ease-out',
+                  }}
+                >
+                  <g data-testid="ice-sphere-inner" className="animate-gentle-float">
+                    {/* 冰球主体冷白通透基底 */}
+                    <circle
+                      data-testid="ice-sphere-circle"
+                      r={sphereR}
+                      fill="url(#sphereIceGrad)"
+                      stroke="rgba(240, 250, 255, 0.88)"
+                      strokeWidth="1.6"
+                    />
+                    {/* 内环折射暗边，增强在空杯与浅色液中的立体存在感 */}
+                    <circle
+                      r={sphereR - 2.2}
+                      fill="none"
+                      stroke="rgba(180, 224, 248, 0.45)"
+                      strokeWidth="1.2"
+                    />
+                    {/* 左上手凿弧形镜面高光 */}
+                    <path
+                      d={`M ${(-sphereR * 0.54).toFixed(1)} ${(-sphereR * 0.22).toFixed(1)} A ${(sphereR * 0.66).toFixed(1)} ${(sphereR * 0.66).toFixed(1)} 0 0 1 ${(sphereR * 0.16).toFixed(1)} ${(-sphereR * 0.64).toFixed(1)}`}
+                      fill="none"
+                      stroke="#FFFFFF"
+                      strokeWidth="3.2"
+                      strokeLinecap="round"
+                      opacity="0.88"
+                    />
+                    <circle
+                      cx={-sphereR * 0.34}
+                      cy={-sphereR * 0.36}
+                      r={sphereR * 0.13}
+                      fill="#FFFFFF"
+                      opacity="0.72"
+                    />
+                    {/* 内部手凿微冰裂折射纹 */}
+                    <path
+                      d={`M ${(-sphereR * 0.35).toFixed(1)} ${(sphereR * 0.1).toFixed(1)} L ${(-sphereR * 0.04).toFixed(1)} ${(-sphereR * 0.12).toFixed(1)} L ${(sphereR * 0.32).toFixed(1)} ${(sphereR * 0.04).toFixed(1)}`}
+                      fill="none"
+                      stroke="#FFFFFF"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      opacity="0.48"
+                    />
+                    <path
+                      d={`M ${(-sphereR * 0.14).toFixed(1)} ${(sphereR * 0.36).toFixed(1)} L ${(sphereR * 0.16).toFixed(1)} ${(sphereR * 0.12).toFixed(1)}`}
+                      fill="none"
+                      stroke="#DDF3FF"
+                      strokeWidth="0.9"
+                      strokeLinecap="round"
+                      opacity="0.44"
+                    />
+                    {/* 右下底部反折射弧光 */}
+                    <path
+                      d={`M ${(sphereR * 0.18).toFixed(1)} ${(sphereR * 0.58).toFixed(1)} A ${(sphereR * 0.64).toFixed(1)} ${(sphereR * 0.64).toFixed(1)} 0 0 0 ${(sphereR * 0.58).toFixed(1)} ${(sphereR * 0.14).toFixed(1)}`}
+                      fill="none"
+                      stroke="#EBF9FF"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      opacity="0.6"
+                    />
+                  </g>
+                </g>
+              );
+            })()}
 
             {iceType === 'cubes' && (
               <g
+                data-testid="ice-cubes-group"
                 style={{
                   transform: `translateY(${
                     totalMl > 0
@@ -605,9 +722,9 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
                       width={c.s}
                       height={c.s}
                       rx="4.5"
-                      fill="rgba(232, 247, 255, 0.28)"
-                      stroke="rgba(255, 255, 255, 0.62)"
-                      strokeWidth="1.1"
+                      fill="rgba(232, 247, 255, 0.34)"
+                      stroke="rgba(255, 255, 255, 0.76)"
+                      strokeWidth="1.2"
                     />
                     <line
                       x1={-c.s / 2 + 4}
@@ -615,8 +732,17 @@ export const CocktailGlassStage: React.FC<CocktailGlassStageProps> = ({
                       x2={c.s / 2 - 5}
                       y2={-c.s / 2 + 4}
                       stroke="#FFFFFF"
-                      strokeWidth="1.2"
-                      opacity="0.55"
+                      strokeWidth="1.4"
+                      opacity="0.7"
+                    />
+                    <line
+                      x1={-c.s / 2 + 5}
+                      y1={c.s / 2 - 5}
+                      x2={c.s / 2 - 6}
+                      y2={-c.s / 2 + 6}
+                      stroke="#EBF8FF"
+                      strokeWidth="0.9"
+                      opacity="0.38"
                     />
                   </g>
                 ))}

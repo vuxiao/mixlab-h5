@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { APP_CONFIG } from '../config';
 import { INGREDIENTS } from '../data/ingredients';
 import { Ingredient, IngredientCategory, PourEntry } from '../types';
@@ -96,6 +97,8 @@ export const BottleRack: React.FC<BottleRackProps> = ({
   onPourStateChange,
 }) => {
   const [category, setCategory] = useState<'all' | IngredientCategory>('all');
+  const [hasMoreBelow, setHasMoreBelow] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
   const isHoldingRef = useRef(false);
@@ -103,6 +106,19 @@ export const BottleRack: React.FC<BottleRackProps> = ({
 
   const filtered =
     category === 'all' ? INGREDIENTS : INGREDIENTS.filter((i) => i.category === category);
+
+  const checkScrollHint = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setHasMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 12);
+  };
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = 0;
+    const raf = requestAnimationFrame(checkScrollHint);
+    return () => cancelAnimationFrame(raf);
+  }, [category]);
 
   const pouredMap = new Map<string, number>();
   pours.forEach((p) => {
@@ -189,55 +205,71 @@ export const BottleRack: React.FC<BottleRackProps> = ({
         </span>
       </div>
 
-      {/* 酒瓶横向/两行滑架 */}
-      <div className="grid grid-cols-2 gap-1.5 max-h-[156px] overflow-y-auto no-scrollbar pr-0.5">
-        {filtered.map((ing) => {
-          const addedMl = pouredMap.get(ing.id) ?? 0;
-          const isPouring = pouringId === ing.id;
-          return (
-            <button
-              key={ing.id}
-              type="button"
-              data-testid={`bottle-${ing.id}`}
-              disabled={isFull}
-              onPointerDown={(e) => handlePointerDown(ing, e)}
-              onPointerUp={() => stopHolding(true)}
-              onPointerLeave={() => stopHolding(false)}
-              onPointerCancel={() => stopHolding(false)}
-              onContextMenu={(e) => e.preventDefault()}
-              className={`group relative flex items-center gap-2 p-2 rounded-xl text-left border transition-all touch-none ${
-                isPouring
-                  ? 'bg-[#2C1B15] border-[#E5A93C] shadow-[0_0_16px_rgba(229,169,60,0.3)] scale-[0.98]'
-                  : addedMl > 0
-                  ? 'bg-[#231510] border-[#C89B54]/55 hover:border-[#E5A93C]/70'
-                  : 'bg-[#18100C] border-[#C89B54]/20 hover:border-[#C89B54]/45'
-              } ${isFull ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.97]'}`}
-            >
-              <BottleSilhouette ingredient={ing} active={isPouring} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[12px] font-semibold text-[#F5EBD6] truncate">
-                    {ing.name}
-                  </span>
-                  {addedMl > 0 && (
-                    <span className="font-mono-tech text-[10px] px-1 py-0.2 rounded bg-[#8F1D2C]/80 text-[#F5EBD6] shrink-0">
-                      {addedMl}
+      {/* 酒瓶两列滑架（含底部渐隐遮罩与下滑提示） */}
+      <div className="relative">
+        <div
+          ref={scrollContainerRef}
+          onScroll={checkScrollHint}
+          className="grid grid-cols-2 gap-1.5 max-h-[164px] overflow-y-auto no-scrollbar pr-0.5 pb-6"
+        >
+          {filtered.map((ing) => {
+            const addedMl = pouredMap.get(ing.id) ?? 0;
+            const isPouring = pouringId === ing.id;
+            return (
+              <button
+                key={ing.id}
+                type="button"
+                data-testid={`bottle-${ing.id}`}
+                disabled={isFull}
+                onPointerDown={(e) => handlePointerDown(ing, e)}
+                onPointerUp={() => stopHolding(true)}
+                onPointerLeave={() => stopHolding(false)}
+                onPointerCancel={() => stopHolding(false)}
+                onContextMenu={(e) => e.preventDefault()}
+                className={`group relative flex items-center gap-2 p-2 rounded-xl text-left border transition-all touch-none ${
+                  isPouring
+                    ? 'bg-[#2C1B15] border-[#E5A93C] shadow-[0_0_16px_rgba(229,169,60,0.3)] scale-[0.98]'
+                    : addedMl > 0
+                    ? 'bg-[#231510] border-[#C89B54]/55 hover:border-[#E5A93C]/70'
+                    : 'bg-[#18100C] border-[#C89B54]/20 hover:border-[#C89B54]/45'
+                } ${isFull ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.97]'}`}
+              >
+                <BottleSilhouette ingredient={ing} active={isPouring} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[12px] font-semibold text-[#F5EBD6] truncate">
+                      {ing.name}
                     </span>
-                  )}
+                    {addedMl > 0 && (
+                      <span className="font-mono-tech text-[10px] px-1 py-0.2 rounded bg-[#8F1D2C]/80 text-[#F5EBD6] shrink-0">
+                        {addedMl}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="font-mono-tech text-[9px] text-[#E5A93C]">
+                      {ing.abv > 0 ? `${ing.abv}°` : '0°'}
+                    </span>
+                    {ing.carbonated && (
+                      <span className="text-[9px] text-[#7DD3FC]">气泡</span>
+                    )}
+                    <span className="text-[9.5px] text-[#A89680] truncate">{ing.shortNote}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="font-mono-tech text-[9px] text-[#E5A93C]">
-                    {ing.abv > 0 ? `${ing.abv}°` : '0°'}
-                  </span>
-                  {ing.carbonated && (
-                    <span className="text-[9px] text-[#7DD3FC]">气泡</span>
-                  )}
-                  <span className="text-[9.5px] text-[#A89680] truncate">{ing.shortNote}</span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 柔和渐隐遮罩 + 下滑探索微提示 */}
+        {hasMoreBelow && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-[#130B08] via-[#130B08]/85 to-transparent flex items-end justify-center pb-0.5">
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[#1F140F]/90 border border-[#C89B54]/30 text-[9px] text-[#E5A93C]/90 tracking-wide">
+              下滑探索更多原料
+              <ChevronDown className="w-2.5 h-2.5 animate-bounce" />
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { GLASS_MAP } from '../data/glasses';
 import { computeLiquidLayers } from '../engine/flavorEngine';
 import { ChallengeResult, DrinkEvaluation } from '../types';
 import { FlavorRadarChart } from './FlavorRadarChart';
+import { MiniCocktailPreview } from './MiniCocktailPreview';
 
 interface ResultSheetProps {
   drink: DrinkEvaluation;
@@ -53,38 +54,45 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
             </span>
           </div>
 
-          <div className="mt-2.5 flex items-start justify-between gap-2">
-            <div>
-              <h2
-                data-testid="result-drink-name"
-                className="font-editorial text-2xl font-bold text-[#F5EBD6] leading-tight"
-              >
-                {drink.name}
-              </h2>
-              <p className="font-editorial italic text-xs text-[#E5A93C]/90 tracking-wider mt-0.5">
-                {drink.enName}
+          <div className="mt-2.5 flex items-center gap-3">
+            {/* 成品鸡尾酒微缩画框 */}
+            <MiniCocktailPreview drink={drink} className="w-[78px] h-[94px]" />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h2
+                    data-testid="result-drink-name"
+                    className="font-editorial text-2xl font-bold text-[#F5EBD6] leading-tight truncate"
+                  >
+                    {drink.name}
+                  </h2>
+                  <p className="font-editorial italic text-xs text-[#E5A93C]/90 tracking-wider mt-0.5 truncate">
+                    {drink.enName}
+                  </p>
+                </div>
+
+                {drink.isClassic && (
+                  <div
+                    data-testid="classic-unlocked-badge"
+                    className="animate-stamp-slam shrink-0 px-2 py-1 rounded border-2 border-[#E5A93C] bg-[#8F1D2C]/90 text-center shadow-lg"
+                  >
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#F5EBD6]">
+                      <Award className="w-3 h-3 text-[#E5A93C]" />
+                      解锁经典
+                    </div>
+                    <div className="font-mono-tech text-[8px] text-[#E5A93C] tracking-widest">
+                      CLASSIC
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p className="mt-2 text-[11.5px] text-[#DFD0B8] leading-relaxed">
+                “{drink.bartenderNote}”
               </p>
             </div>
-
-            {drink.isClassic && (
-              <div
-                data-testid="classic-unlocked-badge"
-                className="animate-stamp-slam shrink-0 px-2.5 py-1 rounded border-2 border-[#E5A93C] bg-[#8F1D2C]/90 text-center shadow-lg"
-              >
-                <div className="flex items-center gap-1 text-[10px] font-bold text-[#F5EBD6]">
-                  <Award className="w-3 h-3 text-[#E5A93C]" />
-                  解锁经典
-                </div>
-                <div className="font-mono-tech text-[8px] text-[#E5A93C] tracking-widest">
-                  CLASSIC
-                </div>
-              </div>
-            )}
           </div>
-
-          <p className="mt-2.5 text-xs text-[#DFD0B8] leading-relaxed">
-            “{drink.bartenderNote}”
-          </p>
 
           {drink.classicRecipe && (
             <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-[#2A1419]/80 border border-[#E5A93C]/30 text-[11px] text-[#F4D9B0]">

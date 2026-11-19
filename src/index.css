@@ -150,14 +150,52 @@ body {
   animation: stamp-slam 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* 柔和漂浮 */
+/* 柔和漂浮（专用于内层 <g>，不与外层定位 transform 冲突） */
 @keyframes gentle-float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-2.6px); }
 }
 
 .animate-gentle-float {
   animation: gentle-float 3.2s ease-in-out infinite;
+}
+
+/* 介绍页升腾微气泡 */
+@keyframes intro-bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+  20% {
+    opacity: 0.78;
+  }
+  85% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-48px) scale(1.1);
+  }
+}
+
+.animate-intro-bubble {
+  animation: intro-bubble-rise 3.4s ease-in infinite;
+}
+
+/* 介绍页平滑揭幕退出 */
+@keyframes cover-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-cover-in {
+  animation: cover-fade-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* 弹窗平滑入场 */

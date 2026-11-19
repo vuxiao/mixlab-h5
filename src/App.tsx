@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BookMarked,
   ChevronRight,
+  Info,
   Sparkles,
   Volume2,
   VolumeX,
@@ -40,9 +41,11 @@ import {
   SavedCocktail,
 } from './types';
 import { BottleRack } from './components/BottleRack';
+import { BrandPosterModal } from './components/BrandPosterModal';
 import { CabinetDrawer } from './components/CabinetDrawer';
 import { ChallengeBanner } from './components/ChallengeBanner';
 import { CocktailGlassStage } from './components/CocktailGlassStage';
+import { IntroCover } from './components/IntroCover';
 import { PosterModal } from './components/PosterModal';
 import { ResultSheet } from './components/ResultSheet';
 import { ShakeControls } from './components/ShakeControls';
@@ -82,6 +85,8 @@ const MiniGlassIcon: React.FC<{ id: GlassId; active: boolean }> = ({ id, active 
 };
 
 export function App() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [brandPosterOpen, setBrandPosterOpen] = useState(false);
   const [mode, setMode] = useState<GameMode>('free');
   const [step, setStep] = useState<AppStep>('glass');
   const [glassId, setGlassId] = useState<GlassId>('highball');
@@ -273,7 +278,7 @@ export function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {/* 自由调酒 / 微醺挑战 模式切换 */}
           <button
             type="button"
@@ -286,7 +291,7 @@ export function App() {
             }`}
           >
             <Sparkles className="w-3 h-3 text-[#E5A93C]" />
-            {mode === 'challenge' ? '挑战中' : '盲品挑战'}
+            {mode === 'challenge' ? '挑战中' : '盲品'}
           </button>
 
           {/* 我的酒柜与图鉴 */}
@@ -301,6 +306,17 @@ export function App() {
             <span className="font-mono-tech text-[9.5px] text-[#E5A93C]">
               {unlockedClassics.length}/{CLASSIC_RECIPES.length}
             </span>
+          </button>
+
+          {/* 重新打开酒馆介绍 / 官方海报 */}
+          <button
+            type="button"
+            data-testid="open-intro-btn"
+            onClick={() => setShowIntro(true)}
+            aria-label="酒馆介绍与官方海报"
+            className="w-7 h-7 rounded-full bg-[#1D130F] border border-[#C89B54]/30 flex items-center justify-center text-[#E5A93C] hover:border-[#E5A93C] active:scale-95 transition shrink-0"
+          >
+            <Info className="w-3.5 h-3.5" />
           </button>
 
           {/* 音效开关 */}
@@ -432,9 +448,12 @@ export function App() {
                             : 'bg-[#170F0C] border-[#C89B54]/20 text-[#C7B69C]'
                         }`}
                       >
-                        <div className="text-xs font-semibold">{opt.name}</div>
-                        <div className="text-[9.5px] text-[#A89680] mt-0.5 leading-tight">
-                          {opt.desc.slice(0, 8)}
+                        <div className="text-[11.5px] font-semibold leading-tight">{opt.name}</div>
+                        <div
+                          data-testid={`ice-desc-${opt.id}`}
+                          className="text-[9.5px] text-[#B8A690] mt-1 leading-snug"
+                        >
+                          {opt.desc}
                         </div>
                       </button>
                     );
@@ -568,6 +587,30 @@ export function App() {
           challengeStars={posterTarget.stars}
           onClose={() => setPosterTarget(null)}
         />
+      )}
+
+      {/* 首屏全屏产品介绍页（Speakeasy Menu Intro Cover） */}
+      {showIntro && (
+        <IntroCover
+          onEnterBar={() => {
+            soundEngine.playIceClink();
+            setShowIntro(false);
+          }}
+          onEnterChallenge={() => {
+            soundEngine.playIceClink();
+            setMode('challenge');
+            setShowIntro(false);
+          }}
+          onOpenBrandPoster={() => {
+            soundEngine.playIceClink();
+            setBrandPosterOpen(true);
+          }}
+        />
+      )}
+
+      {/* 官方产品介绍二维码邀请函海报弹窗 */}
+      {brandPosterOpen && (
+        <BrandPosterModal onClose={() => setBrandPosterOpen(false)} />
       )}
     </div>
   );

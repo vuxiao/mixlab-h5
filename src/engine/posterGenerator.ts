@@ -344,16 +344,33 @@ function drawPosterIce(
   if (iceType === 'sphere') {
     const r = 34;
     const iy = Math.min(bottomY - r - 6, Math.max(liquidTopY + r - 8, (liquidTopY + bottomY) / 2));
-    const g = ctx.createRadialGradient(cx - 10, iy - 10, 4, cx, iy, r);
-    g.addColorStop(0, 'rgba(255,255,255,0.58)');
-    g.addColorStop(0.65, 'rgba(220,242,255,0.22)');
-    g.addColorStop(1, 'rgba(255,255,255,0.36)');
+    const g = ctx.createRadialGradient(cx - 11, iy - 11, 3, cx, iy, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.38, 'rgba(224,245,255,0.46)');
+    g.addColorStop(0.76, 'rgba(170,218,245,0.24)');
+    g.addColorStop(1, 'rgba(255,255,255,0.68)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(cx, iy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(242,251,255,0.88)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 手凿弧形镜面高光与微冰裂
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, iy, r * 0.68, Math.PI * 1.12, Math.PI * 1.48);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.48)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, iy + 4);
+    ctx.lineTo(cx - 1, iy - 4);
+    ctx.lineTo(cx + 12, iy + 2);
     ctx.stroke();
   } else {
     const cubes = [
@@ -692,3 +709,397 @@ export async function generateCocktailPosterDataUrl(
 
   return canvas.toDataURL('image/png', 0.96);
 }
+
+/**
+ * 生成 1080×1920 超清「微醺研究所 · MixLab 官方产品介绍二维码海报」
+ * 复古奶油特种纸 + 黑胡桃烫金画框双拼杂志画报风
+ */
+export async function generateBrandIntroPosterDataUrl(): Promise<string> {
+  const W = 1080;
+  const H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
+
+  // 1. 复古奶油特种纸底色 + 细微纸张颗粒
+  ctx.fillStyle = '#F5EBD6';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(92, 62, 42, 0.036)';
+  for (let i = 0; i < 680; i += 1) {
+    ctx.fillRect((i * 113) % W, (i * 211) % H, 2, 2);
+  }
+
+  // 2. 双层深褐/古铜烫金边框 + Art Deco 角饰
+  ctx.strokeStyle = '#1D110C';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(34, 34, W - 68, H - 68);
+  ctx.strokeStyle = '#C89B54';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(48, 48, W - 96, H - 96);
+
+  // 3. 顶部黑金刊头横幅
+  const headerX = 66;
+  const headerY = 66;
+  const headerW = W - 132;
+  ctx.fillStyle = '#140C09';
+  drawRoundedRect(ctx, headerX, headerY, headerW, 118, 8);
+  ctx.fill();
+  ctx.strokeStyle = '#C89B54';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  ctx.fillStyle = '#E5A93C';
+  ctx.font = '600 20px Menlo, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('EST. 2026 · SPEAKEASY DIGITAL BAR', headerX + 34, headerY + 40);
+
+  ctx.fillStyle = '#F5EBD6';
+  ctx.font = '700 38px Georgia, "Songti SC", serif';
+  ctx.fillText('MIXLAB · 微醺研究所', headerX + 34, headerY + 84);
+
+  // 右上角复古邀请函标签
+  ctx.fillStyle = '#8F1D2C';
+  drawRoundedRect(ctx, headerX + headerW - 224, headerY + 34, 192, 50, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#E5A93C';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#F5EBD6';
+  ctx.font = '700 20px Menlo, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('OFFICIAL INVITE', headerX + headerW - 128, headerY + 60);
+
+  // 4. 中上黑金丝绒酒馆主视觉画框（展示三杯代表性分层特调插画）
+  const stageX = 66;
+  const stageY = 208;
+  const stageW = W - 132;
+  const stageH = 590;
+
+  const stageGrad = ctx.createLinearGradient(stageX, stageY, stageX, stageY + stageH);
+  stageGrad.addColorStop(0, '#1D100D');
+  stageGrad.addColorStop(0.65, '#120A08');
+  stageGrad.addColorStop(1, '#1E120C');
+  ctx.fillStyle = stageGrad;
+  drawRoundedRect(ctx, stageX, stageY, stageW, stageH, 14);
+  ctx.fill();
+  ctx.strokeStyle = '#C89B54';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 画框内部丝绒暖光晕 + 胡桃木吧台弧线
+  const centerGlow = ctx.createRadialGradient(W / 2, stageY + 290, 30, W / 2, stageY + 290, 390);
+  centerGlow.addColorStop(0, 'rgba(229, 145, 56, 0.25)');
+  centerGlow.addColorStop(0.55, 'rgba(143, 29, 44, 0.16)');
+  centerGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = centerGlow;
+  ctx.fillRect(stageX + 2, stageY + 2, stageW - 4, stageH - 4);
+
+  // 吧台桌面光弧
+  ctx.strokeStyle = 'rgba(200, 155, 84, 0.36)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(stageX + 24, stageY + 474);
+  ctx.quadraticCurveTo(W / 2, stageY + 448, stageX + stageW - 24, stageY + 474);
+  ctx.stroke();
+
+  // 画框顶角微标
+  ctx.fillStyle = 'rgba(229, 169, 60, 0.78)';
+  ctx.font = '600 18px Menlo, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('SIGNATURE COLLECTION · 01 / 02 / 03', stageX + 30, stageY + 38);
+  ctx.textAlign = 'right';
+  ctx.fillText('16 INGREDIENTS · 12 CLASSICS', stageX + stageW - 30, stageY + 38);
+
+  // 构造三杯代表性经典特调数据并绘制到主视觉画框
+  const makeShowcaseDrink = (
+    glassId: GlassId,
+    iceType: IceType,
+    garnishes: DrinkEvaluation['garnishes'],
+    pours: DrinkEvaluation['pours'],
+    blendedColor: string,
+    hasBubbles: boolean,
+    shaken: boolean
+  ): DrinkEvaluation => ({
+    serialNo: 'ML-000',
+    name: '',
+    enName: '',
+    isClassic: true,
+    bartenderNote: '',
+    abv: 18,
+    totalMl: 180,
+    flavor: { sour: 45, sweet: 55, bitter: 40, strong: 60, refreshing: 75 },
+    blendedColor,
+    colorFamily: 'amber',
+    hasBubbles,
+    glassId,
+    iceType,
+    garnishes,
+    pours,
+    shaken,
+    createdAt: new Date().toISOString(),
+  });
+
+  // 左：马天尼杯 · 蓝色泻湖
+  ctx.save();
+  ctx.translate(274, stageY + 332);
+  ctx.scale(0.86, 0.86);
+  drawCocktailIllustration(
+    ctx,
+    makeShowcaseDrink(
+      'martini',
+      'none',
+      ['cherry'],
+      [
+        { ingredientId: 'blue_curacao', ml: 70 },
+        { ingredientId: 'lime_juice', ml: 40 },
+        { ingredientId: 'vodka', ml: 60 },
+      ],
+      '#15A3E6',
+      true,
+      false
+    ),
+    0,
+    0
+  );
+  ctx.restore();
+
+  // 右：高球杯 · 龙舌兰日出（经典三层密度渐变）
+  ctx.save();
+  ctx.translate(806, stageY + 324);
+  ctx.scale(0.9, 0.9);
+  drawCocktailIllustration(
+    ctx,
+    makeShowcaseDrink(
+      'highball',
+      'cubes',
+      ['lime', 'mint'],
+      [
+        { ingredientId: 'grenadine', ml: 45 },
+        { ingredientId: 'orange_juice', ml: 95 },
+        { ingredientId: 'tequila', ml: 60 },
+        { ingredientId: 'soda', ml: 20 },
+      ],
+      '#F2742C',
+      true,
+      false
+    ),
+    0,
+    0
+  );
+  ctx.restore();
+
+  // 中 C 位：古典杯 · 琥珀内格罗尼（手凿晶莹大冰球）
+  ctx.save();
+  ctx.translate(W / 2, stageY + 344);
+  ctx.scale(1.06, 1.06);
+  // 中心杯垫
+  ctx.fillStyle = '#25160E';
+  ctx.strokeStyle = '#E5A93C';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 118, 92, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  drawCocktailIllustration(
+    ctx,
+    makeShowcaseDrink(
+      'rocks',
+      'sphere',
+      ['orange_peel', 'rosemary'],
+      [
+        { ingredientId: 'campari', ml: 60 },
+        { ingredientId: 'vermouth', ml: 60 },
+        { ingredientId: 'whiskey', ml: 60 },
+      ],
+      '#B93129',
+      false,
+      false
+    ),
+    0,
+    0
+  );
+  ctx.restore();
+
+  // 三杯底部名称角标
+  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.fillStyle = '#D9C7AE';
+  ctx.textAlign = 'center';
+  ctx.fillText('蓝色泻湖 · Martini', 274, stageY + 538);
+  ctx.fillStyle = '#E5A93C';
+  ctx.font = '700 20px "PingFang SC", sans-serif';
+  ctx.fillText('手凿大冰球 · Rocks', W / 2, stageY + 544);
+  ctx.fillStyle = '#D9C7AE';
+  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.fillText('龙舌兰日出 · Highball', 806, stageY + 538);
+
+  // 5. 中部主标题与引言
+  ctx.fillStyle = '#1B110D';
+  ctx.font = '700 72px Georgia, "Songti SC", "PingFang SC", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('微 醺 研 究 所', W / 2, 872);
+
+  ctx.fillStyle = '#8F1D2C';
+  ctx.font = 'italic 700 26px Georgia, serif';
+  ctx.fillText('MIXLAB · IMMERSIVE SPEAKEASY ATELIER', W / 2, 926);
+
+  ctx.fillStyle = '#4B352A';
+  ctx.font = '500 28px "PingFang SC", sans-serif';
+  ctx.fillText('“不必等夜深，指尖倾倒属于你的今夜风味”', W / 2, 978);
+
+  // 细金分隔线
+  ctx.strokeStyle = '#C89B54';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(86, 1024);
+  ctx.lineTo(W - 86, 1024);
+  ctx.stroke();
+
+  // 6. 中下双栏：左侧三大核心玩法亮点，右侧五维风味美学标识
+  const feats = [
+    {
+      num: 'I.',
+      title: '四步沉浸调酒 · 真实密度分层',
+      desc: '3 款水晶杯 × 手凿大冰球 × 16 种原料，气泡与渐变实时呈现',
+    },
+    {
+      num: 'II.',
+      title: '风味演算引擎 · 12 款经典图鉴',
+      desc: '精准计算 ABV 与五维风味雷达，探索 12 款隐藏经典酒谱',
+    },
+    {
+      num: 'III.',
+      title: '微醺盲品客单 · 复古海报酒柜',
+      desc: '接待深夜神秘酒客赢星级点评，一键导出专属特调酒单',
+    },
+  ];
+
+  let featY = 1078;
+  feats.forEach((f) => {
+    ctx.fillStyle = '#8F1D2C';
+    ctx.font = '700 28px Georgia, serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(f.num, 80, featY);
+
+    ctx.fillStyle = '#1B110D';
+    ctx.font = '700 26px "PingFang SC", sans-serif';
+    ctx.fillText(f.title, 146, featY);
+
+    ctx.fillStyle = '#5B4335';
+    ctx.font = '400 20px "PingFang SC", sans-serif';
+    wrapChineseText(ctx, f.desc, 146, featY + 38, 526, 29, 2);
+
+    featY += 126;
+  });
+
+  // 竖分隔线
+  ctx.strokeStyle = 'rgba(200, 155, 84, 0.45)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(702, 1054);
+  ctx.lineTo(702, 1430);
+  ctx.stroke();
+
+  // 右侧：五维风味美学标识卡
+  ctx.fillStyle = '#1B110D';
+  drawRoundedRect(ctx, 736, 1062, 266, 54, 8);
+  ctx.fill();
+  ctx.fillStyle = '#E5A93C';
+  ctx.font = '700 20px Menlo, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('FLAVOR MATRIX', 869, 1089);
+
+  drawPosterRadar(
+    ctx,
+    { sour: 68, sweet: 74, bitter: 46, strong: 64, refreshing: 88 },
+    869,
+    1248,
+    92
+  );
+
+  ctx.fillStyle = '#6B5142';
+  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('酸 · 甜 · 苦 · 烈 · 清爽', 869, 1396);
+  ctx.fillStyle = '#8F1D2C';
+  ctx.font = '600 16px Menlo, monospace';
+  ctx.fillText('SHAKE · STIR · DISCOVER', 869, 1424);
+
+  // 7. 底部复古虚线票根邀请区 + 高清真实公网二维码
+  const ticketY = 1488;
+  ctx.save();
+  ctx.setLineDash([10, 8]);
+  ctx.strokeStyle = '#8F1D2C';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(66, ticketY);
+  ctx.lineTo(W - 66, ticketY);
+  ctx.stroke();
+  ctx.restore();
+
+  // 票根左右半圆缺口装饰
+  ctx.fillStyle = '#1D110C';
+  ctx.beginPath();
+  ctx.arc(34, ticketY, 16, -Math.PI / 2, Math.PI / 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(W - 34, ticketY, 16, Math.PI / 2, (Math.PI * 3) / 2);
+  ctx.fill();
+
+  // 左侧扫码邀请文案
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#8F1D2C';
+  ctx.font = '700 22px Menlo, monospace';
+  ctx.fillText('SPEAKEASY PASS · 线上免费畅玩', 82, ticketY + 68);
+
+  ctx.fillStyle = '#1B110D';
+  ctx.font = '700 42px Georgia, "Songti SC", "PingFang SC", serif';
+  ctx.fillText('扫码推开吧台暗门', 82, ticketY + 132);
+
+  ctx.fillStyle = '#4B352A';
+  ctx.font = '500 26px "PingFang SC", sans-serif';
+  ctx.fillText('亲手调制你的专属微醺特调', 82, ticketY + 186);
+  ctx.fillText('生成复古酒单海报 · 收藏经典图鉴', 82, ticketY + 226);
+
+  // 公网 URL 胶囊
+  ctx.fillStyle = '#1B110D';
+  drawRoundedRect(ctx, 82, ticketY + 266, 560, 52, 8);
+  ctx.fill();
+  ctx.fillStyle = '#E5A93C';
+  ctx.font = '600 21px Menlo, monospace';
+  ctx.fillText(APP_CONFIG.publicUrl, 104, ticketY + 292);
+
+  // 右侧高容错 H 级公网二维码（264×264）
+  const qrSize = 264;
+  const qrCanvas = document.createElement('canvas');
+  await QRCode.toCanvas(qrCanvas, APP_CONFIG.publicUrl, {
+    width: qrSize,
+    margin: 3,
+    errorCorrectionLevel: 'H',
+    color: {
+      dark: '#140C09',
+      light: '#FFFFFF',
+    },
+  });
+
+  const qrBoxX = W - 82 - qrSize - 18;
+  const qrBoxY = ticketY + 52;
+  ctx.fillStyle = '#FFFFFF';
+  drawRoundedRect(ctx, qrBoxX, qrBoxY, qrSize + 18, qrSize + 18, 12);
+  ctx.fill();
+  ctx.strokeStyle = '#1B110D';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.drawImage(qrCanvas, qrBoxX + 9, qrBoxY + 9, qrSize, qrSize);
+
+  ctx.fillStyle = '#6B5142';
+  ctx.font = '600 17px "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('微信 / 相机扫码即刻入座', qrBoxX + (qrSize + 18) / 2, qrBoxY + qrSize + 44);
+
+  return canvas.toDataURL('image/png', 0.96);
+}
+

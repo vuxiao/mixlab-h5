@@ -203,12 +203,15 @@ export function computeFlavorProfile(
   };
 }
 
-/** 判定是否解锁了 12 款经典隐藏配方之一 */
+/** 判定是否解锁了 12 款经典隐藏配方之一（严格校验核心占比与额外原料上限 ≤15%） */
 export function matchClassicRecipe(pours: PourEntry[]): ClassicRecipe | undefined {
   const layers = computeLiquidLayers(pours);
   if (layers.length < 2) return undefined;
 
-  const presentIds = new Set(layers.map((l) => l.ingredientId));
+  const totalMl = layers.reduce((sum, l) => sum + l.ml, 0);
+  if (totalMl <= 0) return undefined;
+
+  const layerMap = new Map(layers.map((l) => [l.ingredientId, l]));
 
   // 优先检查所需原料更多的复杂经典配方（如长岛冰茶优先于自由古巴）
   const sortedRecipes = [...CLASSIC_RECIPES].sort(
@@ -216,17 +219,29 @@ export function matchClassicRecipe(pours: PourEntry[]): ClassicRecipe | undefine
   );
 
   for (const recipe of sortedRecipes) {
-    const hasAllRequired = recipe.requiredIds.every((id) => presentIds.has(id));
-    if (!hasAllRequired) continue;
+    // 1. 所有必备原料均需存在，且各自达到合理最低占比（糖浆/浓味辅料 ≥5%，常规原料 ≥8%）
+    const allRequiredValid = recipe.requiredIds.every((id) => {
+      const layer = layerMap.get(id);
+      if (!layer) return false;
+      const minRatio = id === 'grenadine' ? 0.05 : 0.08;
+      return layer.ratio >= minRatio;
+    });
+    if (!allRequiredValid) continue;
 
+    // 2. 校验配方之外的额外原料数量及总占比（总占比严格 ≤ 15%，避免 1/3 蓝柑橘误判金汤力）
     const allowed = new Set([...recipe.requiredIds, ...(recipe.optionalIds ?? [])]);
     let extraCount = 0;
-    presentIds.forEach((id) => {
-      if (!allowed.has(id)) extraCount += 1;
+    let extraMl = 0;
+    layers.forEach((layer) => {
+      if (!allowed.has(layer.ingredientId)) {
+        extraCount += 1;
+        extraMl += layer.ml;
+      }
     });
 
     const maxExtra = recipe.maxExtraIds ?? 0;
-    if (extraCount <= maxExtra) {
+    const extraRatio = extraMl / totalMl;
+    if (extraCount <= maxExtra && extraRatio <= 0.15) {
       return recipe;
     }
   }

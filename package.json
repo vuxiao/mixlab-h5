@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "qrcode": "node scripts/generate-qrcode.mjs",
+    "brand-poster": "node scripts/generate-brand-poster.mjs",
     "verify": "node scripts/verify-e2e.mjs"
   },
   "keywords": [],
