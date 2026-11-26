@@ -1,10 +1,13 @@
 import React from 'react';
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
 import { FlavorProfile } from '../types';
 
 interface FlavorRadarChartProps {
   flavor: FlavorProfile;
   size?: number;
   theme?: 'dark' | 'light';
+  /** 首次出现时多边形从中心生长 */
+  animate?: boolean;
 }
 
 const AXES: Array<{ key: keyof FlavorProfile; label: string }> = [
@@ -19,7 +22,9 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
   flavor,
   size = 176,
   theme = 'dark',
+  animate = false,
 }) => {
+  const grow = useAnimatedNumber(1, 820, animate ? 0 : 1);
   const cx = size / 2;
   const cy = size / 2 + 4;
   const radius = size * 0.33;
@@ -33,7 +38,8 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
   };
 
   const dataPoints = AXES.map((axis, idx) => {
-    const val = Math.max(10, flavor[axis.key]) / 100;
+    // 从 0 起算，真实反映小数值（旧版下限 10 会让 0 值也有一块面积）
+    const val = (Math.min(100, Math.max(0, flavor[axis.key])) / 100) * grow;
     return getPoint(idx, val);
   });
 
@@ -41,7 +47,7 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
     dataPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') +
     ' Z';
 
-  const gridStroke = theme === 'dark' ? 'rgba(200, 155, 84, 0.24)' : 'rgba(143, 29, 44, 0.2)';
+  const gridStroke = theme === 'dark' ? 'rgba(200, 155, 84, 0.34)' : 'rgba(143, 29, 44, 0.38)';
   const labelColor = theme === 'dark' ? '#E6D9C3' : '#2B1912';
   const valueColor = theme === 'dark' ? '#E5A93C' : '#8F1D2C';
   const polyFill = theme === 'dark' ? 'rgba(229, 169, 60, 0.25)' : 'rgba(143, 29, 44, 0.24)';
@@ -122,10 +128,10 @@ export const FlavorRadarChart: React.FC<FlavorRadarChartProps> = ({
               y="8"
               fill={valueColor}
               fontSize="9.5"
-              fontFamily="Menlo, monospace"
+              fontFamily='"JetBrains Mono", Menlo, monospace'
               fontWeight="600"
             >
-              {flavor[axis.key]}
+              {Math.round(flavor[axis.key])}
             </text>
           </g>
         );

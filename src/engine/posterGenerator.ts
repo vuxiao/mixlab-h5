@@ -3,6 +3,62 @@ import { APP_CONFIG } from '../config';
 import { GLASS_MAP } from '../data/glasses';
 import { DrinkEvaluation, FlavorProfile, GlassId, IceType } from '../types';
 import { computeLiquidLayers, mixHexColors } from './flavorEngine';
+import { FONT_MONO, FONT_SANS, FONT_SERIF, ensurePosterFonts } from '../fonts';
+import { toWholePercents } from '../utils/percent';
+
+const SERIF = FONT_SERIF;
+const SANS = FONT_SANS;
+const MONO = FONT_MONO;
+const MONO_CJK = `${FONT_MONO}, ${FONT_SANS}`;
+
+export interface PosterImage {
+  dataUrl: string;
+  blob: Blob | null;
+  /** 排版元信息（用于自动化验收：配方行数、覆盖原料数、百分比合计） */
+  meta?: { recipeRows: number; recipeIngredients: number; percentTotal: number };
+}
+
+/** 让出主线程一帧，保证 loading 动画持续转动、页面可响应 */
+function yieldFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+/**
+ * 异步编码 PNG：toBlob 在 Chrome/Safari 中于后台线程编码，不阻塞主线程；
+ * 再用 FileReader 转 dataURL（供 <img> 长按保存与二维码校验使用）。
+ */
+async function exportCanvas(
+  canvas: HTMLCanvasElement,
+  meta?: PosterImage['meta']
+): Promise<PosterImage> {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    if (typeof canvas.toBlob !== 'function') {
+      resolve(null);
+      return;
+    }
+    try {
+      canvas.toBlob((b) => resolve(b), 'image/png');
+    } catch {
+      resolve(null);
+    }
+  });
+  if (!blob) {
+    return { dataUrl: canvas.toDataURL('image/png'), blob: null, meta };
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  return { dataUrl, blob, meta };
+}
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -421,13 +477,13 @@ function drawPosterRadar(
       else ctx.lineTo(px, py);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(143, 29, 44, 0.2)';
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = scale === 1 ? 'rgba(143, 29, 44, 0.55)' : 'rgba(143, 29, 44, 0.36)';
+    ctx.lineWidth = scale === 1 ? 1.6 : 1.2;
     ctx.stroke();
   });
 
   // 轴线与标签
-  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.font = `600 18px ${SANS}`;
   ctx.fillStyle = '#3B251B';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -437,18 +493,26 @@ function drawPosterRadar(
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(ang) * radius, cy + Math.sin(ang) * radius);
-    ctx.strokeStyle = 'rgba(143, 29, 44, 0.16)';
+    ctx.strokeStyle = 'rgba(143, 29, 44, 0.3)';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    const lx = cx + Math.cos(ang) * (radius + 22);
-    const ly = cy + Math.sin(ang) * (radius + 20);
-    ctx.fillText(axis.label, lx, ly);
+    // 维度名 + 数值
+    const lx = cx + Math.cos(ang) * (radius + 26);
+    const ly = cy + Math.sin(ang) * (radius + 22);
+    ctx.font = `600 18px ${SANS}`;
+    ctx.fillStyle = '#3B251B';
+    ctx.fillText(axis.label, lx, ly - 9);
+    ctx.font = `700 14px ${MONO}`;
+    ctx.fillStyle = '#8F1D2C';
+    ctx.fillText(String(Math.round(flavor[axis.key])), lx, ly + 10);
   });
 
   // 数据多边形
   ctx.beginPath();
   axes.forEach((axis, idx) => {
-    const val = Math.max(12, flavor[axis.key]) / 100;
+    // 从 0 起算，真实反映小数值
+    const val = Math.min(100, Math.max(0, flavor[axis.key])) / 100;
     const ang = -Math.PI / 2 + (idx * Math.PI * 2) / 5;
     const px = cx + Math.cos(ang) * radius * val;
     const py = cy + Math.sin(ang) * radius * val;
@@ -461,12 +525,25 @@ function drawPosterRadar(
   ctx.strokeStyle = '#8F1D2C';
   ctx.lineWidth = 2.5;
   ctx.stroke();
+
+  // 顶点圆点
+  axes.forEach((axis, idx) => {
+    const val = Math.min(100, Math.max(0, flavor[axis.key])) / 100;
+    const ang = -Math.PI / 2 + (idx * Math.PI * 2) / 5;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(ang) * radius * val, cy + Math.sin(ang) * radius * val, 3.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#8F1D2C';
+    ctx.fill();
+  });
 }
 
-export async function generateCocktailPosterDataUrl(
+export async function generateCocktailPoster(
   drink: DrinkEvaluation,
   challengeStars?: number
-): Promise<string> {
+): Promise<PosterImage> {
+  // 先让弹窗与 loading 首帧渲染出来，再开始重绘制
+  await yieldFrame();
+  await ensurePosterFonts();
   const W = 750;
   const H = 1334;
   const canvas = document.createElement('canvas');
@@ -500,13 +577,13 @@ export async function generateCocktailPosterDataUrl(
   ctx.fillRect(46, 46, W - 92, 74);
 
   ctx.fillStyle = '#F5EBD6';
-  ctx.font = '700 28px Georgia, "Songti SC", serif';
+  ctx.font = `700 28px ${SERIF}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText('MIXLAB · 微醺研究所', 68, 83);
 
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '600 18px Menlo, monospace';
+  ctx.font = `600 18px ${MONO}`;
   ctx.textAlign = 'right';
   ctx.fillText(`NO. ${drink.serialNo}`, W - 68, 76);
 
@@ -516,7 +593,7 @@ export async function generateCocktailPosterDataUrl(
     day: '2-digit',
   });
   ctx.fillStyle = '#C7B69C';
-  ctx.font = '500 13px Menlo, monospace';
+  ctx.font = `500 13px ${MONO}`;
   ctx.fillText(dateStr, W - 68, 100);
 
   // 4. 中央暗夜吧台酒杯画框
@@ -537,7 +614,7 @@ export async function generateCocktailPosterDataUrl(
 
   // 画框四角微文字
   ctx.fillStyle = 'rgba(229, 169, 60, 0.72)';
-  ctx.font = '600 14px Menlo, monospace';
+  ctx.font = `600 14px ${MONO}`;
   ctx.textAlign = 'left';
   ctx.fillText(
     `${GLASS_MAP[drink.glassId]?.enName.toUpperCase() ?? 'GLASS'} · ${drink.totalMl}ML`,
@@ -549,6 +626,7 @@ export async function generateCocktailPosterDataUrl(
 
   // 绘制高清成品酒杯
   drawCocktailIllustration(ctx, drink, W / 2, stageY + 220);
+  await yieldFrame();
 
   // 如果解锁经典配方，盖酒红印章
   if (drink.isClassic) {
@@ -562,11 +640,11 @@ export async function generateCocktailPosterDataUrl(
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = '#F5EBD6';
-    ctx.font = '700 15px "PingFang SC", sans-serif';
+    ctx.font = `700 15px ${SANS}`;
     ctx.textAlign = 'center';
     ctx.fillText('经典隐藏配方', 0, -5);
     ctx.fillStyle = '#E5A93C';
-    ctx.font = '600 11px Menlo, monospace';
+    ctx.font = `600 11px ${MONO}`;
     ctx.fillText('CLASSIC UNLOCKED', 0, 14);
     ctx.restore();
   }
@@ -582,18 +660,18 @@ export async function generateCocktailPosterDataUrl(
   // 5. 酒名与调酒师微醺评语
   let cursorY = stageY + stageH + 46;
   ctx.fillStyle = '#1B110D';
-  ctx.font = '700 44px Georgia, "Songti SC", "PingFang SC", serif';
+  ctx.font = `700 44px ${SERIF}`;
   ctx.textAlign = 'center';
   ctx.fillText(drink.name, W / 2, cursorY);
 
-  cursorY += 32;
+  cursorY += 40;
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = 'italic 600 19px Georgia, serif';
+  ctx.font = `italic 600 19px ${SERIF}`;
   ctx.fillText(drink.enName.toUpperCase(), W / 2, cursorY);
 
   cursorY += 34;
   ctx.fillStyle = '#4B352A';
-  ctx.font = '400 20px "PingFang SC", sans-serif';
+  ctx.font = `400 20px ${SANS}`;
   cursorY = wrapChineseText(ctx, `“${drink.bartenderNote}”`, W / 2, cursorY, W - 120, 30, 3);
 
   // 分隔装饰线
@@ -609,31 +687,73 @@ export async function generateCocktailPosterDataUrl(
   const infoY = divY + 34;
   ctx.textAlign = 'left';
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = '700 17px Menlo, "PingFang SC", sans-serif';
+  ctx.font = `700 17px ${MONO_CJK}`;
   ctx.fillText('RECIPE · 专属配方比例', 56, infoY);
 
   const layers = computeLiquidLayers(drink.pours).sort((a, b) => b.ml - a.ml);
-  let rowY = infoY + 36;
-  layers.slice(0, 6).forEach((layer) => {
-    const pct = Math.round(layer.ratio * 100);
-    ctx.fillStyle = layer.color;
-    ctx.beginPath();
-    ctx.arc(66, rowY - 2, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(27,17,13,0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+  const percents = toWholePercents(layers.map((l) => l.ml));
+
+  // 配方区可用高度：从首行到票根虚线上方。原料全部列出，行高按数量自适应压缩；
+  // 极端情况（>10 种）把最少的几种合并为「其余 N 种」一行，合计仍为 100%。
+  const ticketTop = 1072;
+  const firstRowY = infoY + 36;
+  const recipeBottom = ticketTop - 22;
+  const MAX_ROWS = 10;
+  type RecipeRow = { name: string; ml: number; pct: number; color: string | null };
+  let rows: RecipeRow[] = layers.map((l, i) => ({ name: l.name, ml: l.ml, pct: percents[i], color: l.color }));
+  if (rows.length > MAX_ROWS) {
+    const head = rows.slice(0, MAX_ROWS - 1);
+    const rest = rows.slice(MAX_ROWS - 1);
+    rows = [
+      ...head,
+      {
+        name: `其余 ${rest.length} 种原料`,
+        ml: rest.reduce((sum, r) => sum + r.ml, 0),
+        pct: rest.reduce((sum, r) => sum + r.pct, 0),
+        color: null,
+      },
+    ];
+  }
+  const rowGap = rows.length > 1 ? Math.min(34, (recipeBottom - firstRowY) / (rows.length - 1)) : 34;
+  const nameSize = rowGap >= 30 ? 19 : rowGap >= 26 ? 17 : 15;
+  const metaSize = rowGap >= 30 ? 16 : rowGap >= 26 ? 14 : 13;
+
+  let rowY = firstRowY;
+  rows.forEach((row) => {
+    if (row.color) {
+      ctx.fillStyle = row.color;
+      ctx.beginPath();
+      ctx.arc(66, rowY - 2, rowGap >= 26 ? 7 : 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(27,17,13,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#6B5142';
+      ctx.font = `700 ${nameSize}px ${SANS}`;
+      ctx.textAlign = 'center';
+      ctx.fillText('+', 66, rowY - 1);
+    }
 
     ctx.fillStyle = '#1B110D';
-    ctx.font = '600 19px "PingFang SC", sans-serif';
+    ctx.font = `600 ${nameSize}px ${SANS}`;
     ctx.textAlign = 'left';
-    ctx.fillText(layer.name, 84, rowY);
+    const metaText = `${row.ml}ml · ${row.pct}%`;
+    // 名称过长时截断，避免与右侧用量重叠
+    ctx.save();
+    ctx.font = `600 ${metaSize}px ${MONO}`;
+    const metaW = ctx.measureText(metaText).width;
+    ctx.restore();
+    const maxNameW = 368 - 84 - metaW - 12;
+    let name = row.name;
+    while (name.length > 1 && ctx.measureText(name).width > maxNameW) name = name.slice(0, -1);
+    ctx.fillText(name === row.name ? name : `${name.slice(0, -1)}…`, 84, rowY);
 
     ctx.fillStyle = '#6B5142';
-    ctx.font = '600 16px Menlo, monospace';
+    ctx.font = `600 ${metaSize}px ${MONO}`;
     ctx.textAlign = 'right';
-    ctx.fillText(`${layer.ml}ml · ${pct}%`, 368, rowY);
-    rowY += 34;
+    ctx.fillText(metaText, 368, rowY);
+    rowY += rowGap;
   });
 
   // 竖分隔线
@@ -649,18 +769,18 @@ export async function generateCocktailPosterDataUrl(
   drawRoundedRect(ctx, 424, infoY - 14, 268, 52, 8);
   ctx.fill();
   ctx.fillStyle = '#C7B69C';
-  ctx.font = '600 14px Menlo, sans-serif';
+  ctx.font = `600 14px ${MONO_CJK}`;
   ctx.textAlign = 'left';
   ctx.fillText('EST. ABV 酒精度', 442, infoY + 12);
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '700 28px Georgia, Menlo, serif';
+  ctx.font = `700 28px ${SERIF}`;
   ctx.textAlign = 'right';
   ctx.fillText(`${drink.abv.toFixed(1)}%`, 674, infoY + 13);
 
   drawPosterRadar(ctx, drink.flavor, 558, infoY + 158, 76);
 
   // 7. 底部虚线票根 + 真实公网二维码
-  const ticketY = 1072;
+  const ticketY = ticketTop;
   ctx.save();
   ctx.setLineDash([7, 6]);
   ctx.strokeStyle = '#8F1D2C';
@@ -673,19 +793,20 @@ export async function generateCocktailPosterDataUrl(
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#1B110D';
-  ctx.font = '700 26px Georgia, "Songti SC", serif';
+  ctx.font = `700 26px ${SERIF}`;
   ctx.fillText('今夜，微醺正好。', 58, ticketY + 62);
 
   ctx.fillStyle = '#5D4437';
-  ctx.font = '400 18px "PingFang SC", sans-serif';
+  ctx.font = `400 18px ${SANS}`;
   ctx.fillText('扫码进入「微醺研究所 · MixLab」', 58, ticketY + 102);
   ctx.fillText('亲手调制你的专属风味特调酒单', 58, ticketY + 132);
 
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = '600 13px Menlo, monospace';
+  ctx.font = `600 13px ${MONO}`;
   ctx.fillText(APP_CONFIG.publicUrl, 58, ticketY + 174);
 
   // 生成高容错高清二维码并绘制到海报右下角
+  await yieldFrame();
   const qrCanvas = document.createElement('canvas');
   await QRCode.toCanvas(qrCanvas, APP_CONFIG.publicUrl, {
     width: 162,
@@ -707,14 +828,21 @@ export async function generateCocktailPosterDataUrl(
   ctx.stroke();
   ctx.drawImage(qrCanvas, qrBoxX, qrBoxY, 162, 162);
 
-  return canvas.toDataURL('image/png', 0.96);
+  await yieldFrame();
+  return exportCanvas(canvas, {
+    recipeRows: rows.length,
+    recipeIngredients: layers.length,
+    percentTotal: rows.reduce((sum, r) => sum + r.pct, 0),
+  });
 }
 
 /**
  * 生成 1080×1920 超清「微醺研究所 · MixLab 官方产品介绍二维码海报」
  * 复古奶油特种纸 + 黑胡桃烫金画框双拼杂志画报风
  */
-export async function generateBrandIntroPosterDataUrl(): Promise<string> {
+export async function generateBrandIntroPoster(): Promise<PosterImage> {
+  await yieldFrame();
+  await ensurePosterFonts();
   const W = 1080;
   const H = 1920;
   const canvas = document.createElement('canvas');
@@ -739,6 +867,7 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   ctx.lineWidth = 2;
   ctx.strokeRect(48, 48, W - 96, H - 96);
 
+  await yieldFrame();
   // 3. 顶部黑金刊头横幅
   const headerX = 66;
   const headerY = 66;
@@ -751,13 +880,13 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   ctx.stroke();
 
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '600 20px Menlo, monospace';
+  ctx.font = `600 20px ${MONO}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText('EST. 2026 · SPEAKEASY DIGITAL BAR', headerX + 34, headerY + 40);
 
   ctx.fillStyle = '#F5EBD6';
-  ctx.font = '700 38px Georgia, "Songti SC", serif';
+  ctx.font = `700 38px ${SERIF}`;
   ctx.fillText('MIXLAB · 微醺研究所', headerX + 34, headerY + 84);
 
   // 右上角复古邀请函标签
@@ -768,10 +897,11 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.fillStyle = '#F5EBD6';
-  ctx.font = '700 20px Menlo, "PingFang SC", sans-serif';
+  ctx.font = `700 20px ${MONO_CJK}`;
   ctx.textAlign = 'center';
   ctx.fillText('OFFICIAL INVITE', headerX + headerW - 128, headerY + 60);
 
+  await yieldFrame();
   // 4. 中上黑金丝绒酒馆主视觉画框（展示三杯代表性分层特调插画）
   const stageX = 66;
   const stageY = 208;
@@ -807,12 +937,13 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
 
   // 画框顶角微标
   ctx.fillStyle = 'rgba(229, 169, 60, 0.78)';
-  ctx.font = '600 18px Menlo, monospace';
+  ctx.font = `600 18px ${MONO}`;
   ctx.textAlign = 'left';
   ctx.fillText('SIGNATURE COLLECTION · 01 / 02 / 03', stageX + 30, stageY + 38);
   ctx.textAlign = 'right';
   ctx.fillText('16 INGREDIENTS · 12 CLASSICS', stageX + stageW - 30, stageY + 38);
 
+  await yieldFrame();
   // 构造三杯代表性经典特调数据并绘制到主视觉画框
   const makeShowcaseDrink = (
     glassId: GlassId,
@@ -864,6 +995,7 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
     0,
     0
   );
+  await yieldFrame();
   ctx.restore();
 
   // 右：高球杯 · 龙舌兰日出（经典三层密度渐变）
@@ -889,6 +1021,7 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
     0,
     0
   );
+  await yieldFrame();
   ctx.restore();
 
   // 中 C 位：古典杯 · 琥珀内格罗尼（手凿晶莹大冰球）
@@ -922,32 +1055,34 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
     0,
     0
   );
+  await yieldFrame();
   ctx.restore();
 
   // 三杯底部名称角标
-  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.font = `600 18px ${SANS}`;
   ctx.fillStyle = '#D9C7AE';
   ctx.textAlign = 'center';
   ctx.fillText('蓝色泻湖 · Martini', 274, stageY + 538);
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '700 20px "PingFang SC", sans-serif';
+  ctx.font = `700 20px ${SANS}`;
   ctx.fillText('手凿大冰球 · Rocks', W / 2, stageY + 544);
   ctx.fillStyle = '#D9C7AE';
-  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.font = `600 18px ${SANS}`;
   ctx.fillText('龙舌兰日出 · Highball', 806, stageY + 538);
 
+  await yieldFrame();
   // 5. 中部主标题与引言
   ctx.fillStyle = '#1B110D';
-  ctx.font = '700 72px Georgia, "Songti SC", "PingFang SC", serif';
+  ctx.font = `700 72px ${SERIF}`;
   ctx.textAlign = 'center';
   ctx.fillText('微 醺 研 究 所', W / 2, 872);
 
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = 'italic 700 26px Georgia, serif';
+  ctx.font = `italic 700 26px ${SERIF}`;
   ctx.fillText('MIXLAB · IMMERSIVE SPEAKEASY ATELIER', W / 2, 926);
 
   ctx.fillStyle = '#4B352A';
-  ctx.font = '500 28px "PingFang SC", sans-serif';
+  ctx.font = `500 28px ${SANS}`;
   ctx.fillText('“不必等夜深，指尖倾倒属于你的今夜风味”', W / 2, 978);
 
   // 细金分隔线
@@ -958,6 +1093,7 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   ctx.lineTo(W - 86, 1024);
   ctx.stroke();
 
+  await yieldFrame();
   // 6. 中下双栏：左侧三大核心玩法亮点，右侧五维风味美学标识
   const feats = [
     {
@@ -980,16 +1116,16 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   let featY = 1078;
   feats.forEach((f) => {
     ctx.fillStyle = '#8F1D2C';
-    ctx.font = '700 28px Georgia, serif';
+    ctx.font = `700 28px ${SERIF}`;
     ctx.textAlign = 'left';
     ctx.fillText(f.num, 80, featY);
 
     ctx.fillStyle = '#1B110D';
-    ctx.font = '700 26px "PingFang SC", sans-serif';
+    ctx.font = `700 26px ${SANS}`;
     ctx.fillText(f.title, 146, featY);
 
     ctx.fillStyle = '#5B4335';
-    ctx.font = '400 20px "PingFang SC", sans-serif';
+    ctx.font = `400 20px ${SANS}`;
     wrapChineseText(ctx, f.desc, 146, featY + 38, 526, 29, 2);
 
     featY += 126;
@@ -1008,7 +1144,7 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   drawRoundedRect(ctx, 736, 1062, 266, 54, 8);
   ctx.fill();
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '700 20px Menlo, "PingFang SC", sans-serif';
+  ctx.font = `700 20px ${MONO_CJK}`;
   ctx.textAlign = 'center';
   ctx.fillText('FLAVOR MATRIX', 869, 1089);
 
@@ -1021,11 +1157,11 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   );
 
   ctx.fillStyle = '#6B5142';
-  ctx.font = '600 18px "PingFang SC", sans-serif';
+  ctx.font = `600 18px ${SANS}`;
   ctx.textAlign = 'center';
   ctx.fillText('酸 · 甜 · 苦 · 烈 · 清爽', 869, 1396);
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = '600 16px Menlo, monospace';
+  ctx.font = `600 16px ${MONO}`;
   ctx.fillText('SHAKE · STIR · DISCOVER', 869, 1424);
 
   // 7. 底部复古虚线票根邀请区 + 高清真实公网二维码
@@ -1052,15 +1188,15 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   // 左侧扫码邀请文案
   ctx.textAlign = 'left';
   ctx.fillStyle = '#8F1D2C';
-  ctx.font = '700 22px Menlo, monospace';
+  ctx.font = `700 22px ${MONO}`;
   ctx.fillText('SPEAKEASY PASS · 线上免费畅玩', 82, ticketY + 68);
 
   ctx.fillStyle = '#1B110D';
-  ctx.font = '700 42px Georgia, "Songti SC", "PingFang SC", serif';
+  ctx.font = `700 42px ${SERIF}`;
   ctx.fillText('扫码推开吧台暗门', 82, ticketY + 132);
 
   ctx.fillStyle = '#4B352A';
-  ctx.font = '500 26px "PingFang SC", sans-serif';
+  ctx.font = `500 26px ${SANS}`;
   ctx.fillText('亲手调制你的专属微醺特调', 82, ticketY + 186);
   ctx.fillText('生成复古酒单海报 · 收藏经典图鉴', 82, ticketY + 226);
 
@@ -1069,11 +1205,12 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   drawRoundedRect(ctx, 82, ticketY + 266, 560, 52, 8);
   ctx.fill();
   ctx.fillStyle = '#E5A93C';
-  ctx.font = '600 21px Menlo, monospace';
+  ctx.font = `600 21px ${MONO}`;
   ctx.fillText(APP_CONFIG.publicUrl, 104, ticketY + 292);
 
   // 右侧高容错 H 级公网二维码（264×264）
   const qrSize = 264;
+  await yieldFrame();
   const qrCanvas = document.createElement('canvas');
   await QRCode.toCanvas(qrCanvas, APP_CONFIG.publicUrl, {
     width: qrSize,
@@ -1096,10 +1233,23 @@ export async function generateBrandIntroPosterDataUrl(): Promise<string> {
   ctx.drawImage(qrCanvas, qrBoxX + 9, qrBoxY + 9, qrSize, qrSize);
 
   ctx.fillStyle = '#6B5142';
-  ctx.font = '600 17px "PingFang SC", sans-serif';
+  ctx.font = `600 17px ${SANS}`;
   ctx.textAlign = 'center';
   ctx.fillText('微信 / 相机扫码即刻入座', qrBoxX + (qrSize + 18) / 2, qrBoxY + qrSize + 44);
 
-  return canvas.toDataURL('image/png', 0.96);
+  await yieldFrame();
+  return exportCanvas(canvas);
 }
 
+
+/** 兼容旧接口：仅返回 dataURL */
+export async function generateCocktailPosterDataUrl(
+  drink: DrinkEvaluation,
+  challengeStars?: number
+): Promise<string> {
+  return (await generateCocktailPoster(drink, challengeStars)).dataUrl;
+}
+
+export async function generateBrandIntroPosterDataUrl(): Promise<string> {
+  return (await generateBrandIntroPoster()).dataUrl;
+}

@@ -21,7 +21,7 @@ const GuestAvatar: React.FC<{ theme: ChallengeGuest['avatarTheme'] }> = ({ theme
   const colors = palette[theme] ?? palette.jazz;
 
   return (
-    <svg viewBox="0 0 40 40" className="w-9 h-9 rounded-full shrink-0 border border-[#C89B54]/50">
+    <svg viewBox="0 0 40 40" aria-hidden="true" className="w-9 h-9 rounded-full shrink-0 border border-[#C89B54]/50">
       <rect width="40" height="40" fill={colors.bg} />
       <circle cx="20" cy="15" r="6.5" fill="#F5EBD6" opacity="0.92" />
       <path d="M 8 36 C 10 26, 30 26, 32 36" fill={colors.accent} opacity="0.88" />
@@ -42,16 +42,23 @@ export const ChallengeBanner: React.FC<ChallengeBannerProps> = ({ guest, onNextG
         <GuestAvatar theme={guest.avatarTheme} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-[11px] font-bold text-[#E5A93C] truncate">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className="text-[11px] font-bold text-[#E5A93C] truncate shrink-0 max-w-[60%]">
                 {guest.guestName}
               </span>
-              <span className="text-[9.5px] text-[#B8A690] truncate hidden xs:inline">
+              {/* 客人人设（旧版用了不存在的 xs 断点导致永远隐藏） */}
+              <span
+                data-testid="guest-persona"
+                className="text-[9.5px] text-[#B8A690] truncate min-w-0"
+                title={guest.persona}
+              >
                 · {guest.persona}
               </span>
             </div>
             <button
               type="button"
+              data-testid="next-guest-btn"
+              aria-label="换一位客人的订单"
               onClick={onNextGuest}
               className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-[#160E0B] border border-[#C89B54]/35 text-[#E6D9C3] hover:border-[#E5A93C] active:scale-95 transition shrink-0"
             >

@@ -165,7 +165,7 @@ try {
   console.log(`✅ Step 3 经典配方防误判回归通过: 金酒+蓝柑橘+汤力水判定为原创蓝色特调「${blueDrinkName}」`);
 
   // 调制下一杯：验证经典莫吉托解锁 + 摇匀 + 品鉴卡缩略预览杯 + 海报 + 收藏持久化
-  await page.getByText('调制下一杯特调').click();
+  await page.getByTestId('make-another-btn').click();
   await page.getByTestId('step-tab-glass').click();
   await page.getByTestId('glass-option-highball').click();
   await page.getByTestId('step-tab-ice').click();
@@ -190,7 +190,10 @@ try {
   const shakeBtn = page.getByTestId('shake-action-btn');
   await shakeBtn.dispatchEvent('pointerdown', { pointerId: 1, bubbles: true });
   await page.waitForTimeout(1250);
-  await shakeBtn.dispatchEvent('pointerup', { pointerId: 1, bubbles: true });
+  // 摇到 100% 自动出酒后，本杯进入「已出酒」锁定态，摇匀按钮会被替换，需判断是否仍存在
+  if (await shakeBtn.count()) {
+    await shakeBtn.dispatchEvent('pointerup', { pointerId: 1, bubbles: true });
+  }
 
   await page.getByTestId('result-sheet').waitFor({ state: 'visible', timeout: 5000 });
   const mojitoName = await page.getByTestId('result-drink-name').innerText();
@@ -224,7 +227,10 @@ try {
   await page.waitForTimeout(200);
 
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByTestId('intro-enter-bar-btn').click();
+  // 同一会话内刷新不再强制展示首屏（sessionStorage 记忆），若仍展示则点击进入
+  if (await page.getByTestId('intro-cover').isVisible()) {
+    await page.getByTestId('intro-enter-bar-btn').click();
+  }
   await page.getByTestId('open-cabinet-btn').click();
   await page.getByTestId('cabinet-drawer').waitFor({ state: 'visible' });
   const savedCount = await page.getByTestId('cabinet-item').count();

@@ -1,0 +1,54 @@
+name: Build & Deploy to GitHub Pages
+
+# main 分支每次推送自动构建并发布到 gh-pages，杜绝「手动推 gh-pages」导致的线上与源码漂移
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check & build
+        run: npm run build
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-out
+
+      - name: Publish dist to gh-pages
+        run: |
+          rsync -a --delete --exclude '.git' dist/ gh-pages-out/
+          touch gh-pages-out/.nojekyll
+          cd gh-pages-out
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy"
+            exit 0
+          fi
+          git commit -m "deploy: ${GITHUB_SHA::7} from main"
+          git push origin gh-pages

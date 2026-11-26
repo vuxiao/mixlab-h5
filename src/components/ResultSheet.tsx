@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Award, Bookmark, BookmarkCheck, FileImage, RotateCcw, Star, X } from 'lucide-react';
 import { GLASS_MAP } from '../data/glasses';
 import { computeLiquidLayers } from '../engine/flavorEngine';
+import { useDialogA11y } from '../hooks/useDialogA11y';
+import { useSheetDrag } from '../hooks/useSheetDrag';
+import { useAnimatedNumber } from '../hooks/useAnimatedNumber';
+import { toWholePercents } from '../utils/percent';
 import { ChallengeResult, DrinkEvaluation } from '../types';
 import { FlavorRadarChart } from './FlavorRadarChart';
 import { MiniCocktailPreview } from './MiniCocktailPreview';
@@ -14,6 +18,7 @@ interface ResultSheetProps {
   onGeneratePoster: () => void;
   onMakeAnother: () => void;
   onClose: () => void;
+  closing?: boolean;
 }
 
 export const ResultSheet: React.FC<ResultSheetProps> = ({
@@ -24,23 +29,49 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
   onGeneratePoster,
   onMakeAnother,
   onClose,
+  closing = false,
 }) => {
   const layers = computeLiquidLayers(drink.pours).sort((a, b) => b.ml - a.ml);
+  const percents = toWholePercents(layers.map((l) => l.ml));
   const glassMeta = GLASS_MAP[drink.glassId];
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useDialogA11y(panelRef, onClose, !closing);
+  const drag = useSheetDrag(panelRef, onClose);
+  const shownAbv = useAnimatedNumber(drink.abv, 900, 0);
 
   return (
     <div
       data-testid="result-sheet"
-      className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-2.5 sm:p-4"
+      className={`fixed inset-0 z-40 flex items-end sm:items-center justify-center p-2.5 sm:p-4 ${
+        closing ? 'pointer-events-none' : ''
+      }`}
     >
-      <div className="w-full max-w-[410px] max-h-[92vh] overflow-y-auto no-scrollbar rounded-2xl bg-[#19100C] border border-[#C89B54]/45 shadow-[0_24px_60px_rgba(0,0,0,0.8)] animate-sheet-up">
+      <div
+        aria-hidden="true"
+        className={`absolute inset-0 bg-black/75 backdrop-blur-sm ${closing ? 'anim-fade-out' : 'anim-fade-in'}`}
+        onClick={onClose}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="result-sheet-title"
+        tabIndex={-1}
+        className={`relative w-full max-w-[410px] max-h-[92vh] overflow-y-auto overscroll-contain no-scrollbar rounded-[22px] bg-[#19100C] border border-[#C89B54]/45 shadow-[0_24px_60px_rgba(0,0,0,0.8)] will-change-transform ${
+          closing ? 'anim-sheet-out' : 'anim-sheet-in'
+        }`}
+      >
         {/* 顶部杂志式酒单标题栏 */}
-        <div className="relative px-4 pt-4 pb-3 border-b border-[#C89B54]/20 bg-gradient-to-b from-[#2A1812] to-[#19100C]">
+        <div
+          {...drag}
+          className="relative px-4 pt-3 pb-3 border-b border-[#C89B54]/20 bg-gradient-to-b from-[#2A1812] to-[#19100C] touch-none"
+        >
+          <div className="sheet-grabber mx-auto mb-2.5" aria-hidden="true" />
           <button
             type="button"
             onClick={onClose}
             aria-label="关闭品鉴卡"
-            className="absolute right-3 top-3 w-7 h-7 rounded-full bg-[#120B08]/80 border border-[#C89B54]/30 flex items-center justify-center text-[#C7B69C] hover:text-white"
+            className="absolute right-3 top-4 w-7 h-7 rounded-full bg-[#120B08]/80 border border-[#C89B54]/30 flex items-center justify-center text-[#C7B69C] hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
@@ -62,6 +93,7 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2
+                    id="result-sheet-title"
                     data-testid="result-drink-name"
                     className="font-editorial text-2xl font-bold text-[#F5EBD6] leading-tight truncate"
                   >
@@ -155,9 +187,9 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
         )}
 
         {/* 中部：五维风味雷达 + 酒精度 + 配方表 */}
-        <div className="px-4 py-3 grid grid-cols-12 gap-2 items-center">
+        <div className="px-4 py-3 grid grid-cols-12 gap-2 items-start">
           <div className="col-span-6 flex flex-col items-center justify-center bg-[#120B08]/80 rounded-xl border border-[#C89B54]/20 py-2">
-            <FlavorRadarChart flavor={drink.flavor} size={154} theme="dark" />
+            <FlavorRadarChart flavor={drink.flavor} size={154} theme="dark" animate />
           </div>
 
           <div className="col-span-6 flex flex-col gap-2">
@@ -167,25 +199,37 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
                 data-testid="result-abv"
                 className="font-editorial text-xl font-bold text-[#E5A93C]"
               >
-                {drink.abv.toFixed(1)}%
+                {shownAbv.toFixed(1)}%
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-[#120B08]/80 border border-[#C89B54]/20 flex flex-col gap-1.5">
-              <span className="font-mono-tech text-[9.5px] tracking-widest text-[#C89B54] uppercase">
-                RECIPE RATIO
+            <div
+              data-testid="result-recipe-list"
+              className="p-2.5 rounded-xl bg-[#120B08]/80 border border-[#C89B54]/20 flex flex-col gap-1.5"
+            >
+              <span className="font-mono-tech text-[9.5px] tracking-widest text-[#C89B54] uppercase flex items-center justify-between">
+                <span>RECIPE RATIO</span>
+                <span className="normal-case tracking-normal text-[#A89680]">{layers.length} 种</span>
               </span>
-              {layers.slice(0, 5).map((layer) => (
-                <div key={layer.ingredientId} className="flex items-center justify-between text-[11px]">
-                  <span className="flex items-center gap-1.5 text-[#E6D9C3] truncate">
+              {/* 全部原料逐行列出，不再截断 */}
+              {layers.map((layer, idx) => (
+                <div
+                  key={layer.ingredientId}
+                  data-testid="result-recipe-row"
+                  style={{ animationDelay: `${140 + idx * 45}ms` }}
+                  className={`anim-row-in flex items-center justify-between gap-1 ${
+                    layers.length > 6 ? 'text-[10px]' : 'text-[11px]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-[#E6D9C3] min-w-0">
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: layer.color }}
                     />
-                    <span className="truncate max-w-[78px]">{layer.name}</span>
+                    <span className="truncate">{layer.name}</span>
                   </span>
-                  <span className="font-mono-tech text-[10px] text-[#C89B54] shrink-0">
-                    {layer.ml}ml
+                  <span className="font-mono-tech text-[9.5px] text-[#C89B54] shrink-0 whitespace-nowrap">
+                    {layer.ml}ml · {percents[idx]}%
                   </span>
                 </div>
               ))}
@@ -199,6 +243,8 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
             <button
               type="button"
               data-testid="save-cabinet-btn"
+              data-autofocus
+              aria-pressed={isSaved}
               onClick={onSaveToCabinet}
               className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition active:scale-95 ${
                 isSaved
@@ -209,12 +255,12 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
               {isSaved ? (
                 <>
                   <BookmarkCheck className="w-4 h-4" />
-                  已收藏进酒柜
+                  已收藏
                 </>
               ) : (
                 <>
                   <Bookmark className="w-4 h-4 text-[#E5A93C]" />
-                  收藏进酒柜
+                  收藏
                 </>
               )}
             </button>
@@ -226,17 +272,18 @@ export const ResultSheet: React.FC<ResultSheetProps> = ({
               className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-[#8F1D2C] to-[#B0283A] text-[#F5EBD6] border border-[#E5A93C]/65 shadow-md active:scale-95 transition"
             >
               <FileImage className="w-4 h-4 text-[#E5A93C]" />
-              生成特调海报
+              生成海报
             </button>
           </div>
 
           <button
             type="button"
+            data-testid="make-another-btn"
             onClick={onMakeAnother}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-[#C7B69C] hover:text-[#F5EBD6] bg-[#140C09] border border-[#C89B54]/20 active:scale-95 transition"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            调制下一杯特调
+            再调一杯
           </button>
         </div>
       </div>

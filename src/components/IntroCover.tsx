@@ -1,41 +1,40 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { ArrowRight, QrCode, Sparkles } from 'lucide-react';
 
 interface IntroCoverProps {
   onEnterBar: () => void;
   onEnterChallenge: () => void;
   onOpenBrandPoster: () => void;
+  closing?: boolean;
 }
 
-const FEATURES = [
-  {
-    roman: 'I',
-    title: '四步沉浸调酒',
-    desc: '3 款水晶杯 × 手凿冰球 × 16 种基酒辅料真实密度分层',
-  },
-  {
-    roman: 'II',
-    title: '风味演算与经典图鉴',
-    desc: '实时 ABV 度数、五维风味雷达与 12 款隐藏经典酒谱',
-  },
-  {
-    roman: 'III',
-    title: '微醺盲品客单',
-    desc: '接待深夜神秘酒客，定制特调赢取星级品鉴',
-  },
-];
+const FEATURES = ['四步调酒', '12 款经典配方', '盲品挑战'];
 
 export const IntroCover: React.FC<IntroCoverProps> = ({
   onEnterBar,
   onEnterChallenge,
   onOpenBrandPoster,
+  closing = false,
 }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useDialogA11y(panelRef, undefined, !closing);
+
   return (
     <div
       data-testid="intro-cover"
-      className="fixed inset-0 z-50 flex justify-center items-stretch bg-[#0A0604]"
+      className={`fixed inset-0 z-50 flex justify-center items-stretch bg-[#0A0604] ${
+        closing ? 'anim-fade-out pointer-events-none' : ''
+      }`}
     >
-      <div className="speakeasy-grain animate-cover-in relative w-full max-w-[430px] h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-b from-[#1B0E0C] via-[#120A08] to-[#0D0705] p-3 safe-top safe-bottom">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="intro-cover-title"
+        tabIndex={-1}
+        className={`speakeasy-grain ${closing ? 'anim-cover-out' : 'animate-cover-in'} relative w-full max-w-[430px] app-vh flex flex-col overflow-hidden bg-gradient-to-b from-[#1B0E0C] via-[#120A08] to-[#0D0705] p-3 safe-top safe-bottom`}
+      >
         {/* 丝绒酒红与琥珀霓虹氛围光斑 */}
         <div
           className="pointer-events-none absolute -top-12 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl opacity-45"
@@ -46,13 +45,18 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
 
         {/* 双层古铜烫金细线外框 */}
         <div className="relative z-10 flex-1 min-h-0 flex flex-col justify-between rounded-2xl border border-[#C89B54]/55 p-1.5 shadow-[inset_0_0_40px_rgba(0,0,0,0.6)]">
-          <div className="relative flex-1 min-h-0 flex flex-col justify-between rounded-xl border border-[#C89B54]/28 px-4 py-3.5 bg-[#120B08]/55 backdrop-blur-[2px] overflow-y-auto no-scrollbar">
+          <div className="relative flex-1 min-h-0 flex flex-col rounded-xl border border-[#C89B54]/28 bg-[#120B08]/55 backdrop-blur-[2px] overflow-hidden">
             {/* 四角 Art Deco 烫金角饰 */}
-            <span className="pointer-events-none absolute top-2 left-2 w-3 h-3 border-t border-l border-[#E5A93C]/70" />
-            <span className="pointer-events-none absolute top-2 right-2 w-3 h-3 border-t border-r border-[#E5A93C]/70" />
-            <span className="pointer-events-none absolute bottom-2 left-2 w-3 h-3 border-b border-l border-[#E5A93C]/70" />
-            <span className="pointer-events-none absolute bottom-2 right-2 w-3 h-3 border-b border-r border-[#E5A93C]/70" />
+            <span className="pointer-events-none absolute z-20 top-2 left-2 w-3 h-3 border-t border-l border-[#E5A93C]/70" />
+            <span className="pointer-events-none absolute z-20 top-2 right-2 w-3 h-3 border-t border-r border-[#E5A93C]/70" />
+            <span className="pointer-events-none absolute z-20 bottom-2 left-2 w-3 h-3 border-b border-l border-[#E5A93C]/70" />
+            <span className="pointer-events-none absolute z-20 bottom-2 right-2 w-3 h-3 border-b border-r border-[#E5A93C]/70" />
 
+            {/* 可滚动内容区（小屏时滚动，CTA 始终固定在底部可见） */}
+            <div
+              data-testid="intro-scroll"
+              className="relative flex-1 min-h-0 flex flex-col px-4 pt-3.5 short:pt-2.5 pb-2 overflow-y-auto no-scrollbar"
+            >
             {/* 顶部刊头 */}
             <div className="flex items-center justify-between border-b border-[#C89B54]/22 pb-2 shrink-0">
               <span className="font-mono-tech text-[9.5px] tracking-[0.2em] text-[#E5A93C] uppercase">
@@ -64,8 +68,8 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
             </div>
 
             {/* 中央主视觉：发光水晶鸡尾酒杯 + 手凿大冰球 + 升腾气泡 */}
-            <div className="flex flex-col items-center justify-center my-1.5 shrink-0">
-              <div className="relative w-36 h-40 flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center mt-auto mb-1.5 shrink-0">
+              <div className="relative w-36 h-40 short:w-28 short:h-[124px] [@media(min-height:760px)]:w-48 [@media(min-height:760px)]:h-[212px] flex items-center justify-center">
                 <div
                   className="pointer-events-none absolute w-32 h-32 rounded-full blur-2xl opacity-55"
                   style={{
@@ -75,6 +79,7 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
                 <svg
                   viewBox="0 0 180 190"
                   className="relative z-10 w-full h-full drop-shadow-[0_12px_20px_rgba(0,0,0,0.75)]"
+                  role="img"
                   aria-label="微醺研究所封面水晶酒杯插画"
                 >
                   <defs>
@@ -172,7 +177,10 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
                   </span>
                   <span className="h-[1px] w-6 bg-gradient-to-l from-transparent to-[#E5A93C]" />
                 </div>
-                <h1 className="font-editorial text-[34px] font-bold tracking-[0.08em] text-[#F5EBD6] leading-tight mt-0.5 neon-amber-text">
+                <h1
+                  id="intro-cover-title"
+                  className="font-editorial text-[34px] short:text-[28px] font-bold tracking-[0.08em] text-[#F5EBD6] leading-tight mt-0.5 neon-amber-text"
+                >
                   微醺研究所
                 </h1>
                 <p className="text-[12px] text-[#D9C7AE] tracking-wide mt-1">
@@ -181,37 +189,29 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
               </div>
             </div>
 
-            {/* 三栏复古杂志目录式玩法速览 */}
-            <div className="flex flex-col gap-2 my-2 shrink-0">
-              {FEATURES.map((feat) => (
-                <div
-                  key={feat.roman}
-                  className="flex items-start gap-2.5 px-3 py-2 rounded-xl bg-[#1A100D]/88 border border-[#C89B54]/24"
-                >
-                  <span className="font-editorial text-sm font-bold text-[#E5A93C] w-5 text-center shrink-0 pt-0.5">
-                    {feat.roman}.
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-semibold text-[#F5EBD6] tracking-wide">
-                      {feat.title}
-                    </div>
-                    <p className="text-[10.5px] text-[#B8A690] leading-snug mt-0.5">
-                      {feat.desc}
-                    </p>
-                  </div>
-                </div>
+            {/* 玩法速览 */}
+            <div className="flex items-center justify-center gap-2 mt-3 mb-auto shrink-0 text-[11px] text-[#D9C7AE] tracking-wide">
+              {FEATURES.map((feat, idx) => (
+                <React.Fragment key={feat}>
+                  {idx > 0 && <span className="text-[#C89B54]/50" aria-hidden="true">·</span>}
+                  <span>{feat}</span>
+                </React.Fragment>
               ))}
             </div>
+            </div>
 
-            {/* 底部主副 CTA 动作区 */}
-            <div className="flex flex-col gap-2 pt-1 shrink-0">
+            {/* 底部主副 CTA 动作区（固定吸底，不随内容滚动；320×568 也在首屏可见） */}
+            <div
+              data-testid="intro-cta"
+              className="relative z-10 flex flex-col gap-2 px-4 pt-2 pb-3.5 short:pb-2.5 shrink-0 border-t border-[#C89B54]/15 bg-gradient-to-t from-[#120B08] to-[#120B08]/80"
+            >
               <button
                 type="button"
                 data-testid="intro-enter-bar-btn"
                 onClick={onEnterBar}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#8F1D2C] via-[#B2293B] to-[#8F1D2C] text-[#F5EBD6] font-bold text-[13.5px] tracking-[0.12em] border border-[#E5A93C]/75 shadow-[0_8px_24px_rgba(143,29,44,0.55)] flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+                className="w-full py-3.5 short:py-3 rounded-xl bg-gradient-to-r from-[#8F1D2C] via-[#B2293B] to-[#8F1D2C] text-[#F5EBD6] font-bold text-[13.5px] tracking-[0.12em] border border-[#E5A93C]/75 shadow-[0_8px_24px_rgba(143,29,44,0.55)] flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
               >
-                <span>推开暗门 · 进入吧台</span>
+                <span>进入吧台</span>
                 <ArrowRight className="w-4 h-4 text-[#E5A93C]" />
               </button>
 
@@ -220,19 +220,19 @@ export const IntroCover: React.FC<IntroCoverProps> = ({
                   type="button"
                   data-testid="intro-enter-challenge-btn"
                   onClick={onEnterChallenge}
-                  className="py-2.5 px-2 rounded-xl bg-[#1B110D] border border-[#C89B54]/35 text-[#EBDCC3] text-[11px] font-medium flex items-center justify-center gap-1 hover:border-[#E5A93C] active:scale-[0.98] transition"
+                  className="py-2.5 px-1.5 rounded-xl bg-[#1B110D] border border-[#C89B54]/35 text-[#EBDCC3] text-[10.5px] xs:text-[11px] font-medium whitespace-nowrap flex items-center justify-center gap-1 hover:border-[#E5A93C] active:scale-[0.98] transition"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#E5A93C] shrink-0" />
-                  <span>直接挑战盲品客单</span>
+                  <span>盲品挑战</span>
                 </button>
                 <button
                   type="button"
                   data-testid="intro-open-poster-btn"
                   onClick={onOpenBrandPoster}
-                  className="py-2.5 px-2 rounded-xl bg-[#1B110D] border border-[#C89B54]/35 text-[#EBDCC3] text-[11px] font-medium flex items-center justify-center gap-1 hover:border-[#E5A93C] active:scale-[0.98] transition"
+                  className="py-2.5 px-1.5 rounded-xl bg-[#1B110D] border border-[#C89B54]/35 text-[#EBDCC3] text-[10.5px] xs:text-[11px] font-medium whitespace-nowrap flex items-center justify-center gap-1 hover:border-[#E5A93C] active:scale-[0.98] transition"
                 >
                   <QrCode className="w-3.5 h-3.5 text-[#E5A93C] shrink-0" />
-                  <span>获取酒馆邀请海报</span>
+                  <span>邀请函</span>
                 </button>
               </div>
             </div>

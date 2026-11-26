@@ -1,6 +1,28 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private enabled = true;
+  private lifecycleBound = false;
+
+  /**
+   * 微信 / iOS 切后台再回来时 AudioContext 可能处于 suspended / interrupted，
+   * 在页面重新可见及下一次触摸时主动 resume。
+   */
+  private bindLifecycle() {
+    if (this.lifecycleBound || typeof document === 'undefined') return;
+    this.lifecycleBound = true;
+    const resume = () => {
+      const ctx = this.ctx;
+      if (!ctx || !this.enabled) return;
+      if (ctx.state !== 'running' && ctx.state !== 'closed') {
+        void ctx.resume().catch(() => undefined);
+      }
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) resume();
+    });
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('pointerdown', resume, { passive: true });
+  }
 
   public setEnabled(val: boolean) {
     this.enabled = val;
@@ -19,9 +41,10 @@ class SoundEngine {
           (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         if (!AudioCtx) return null;
         this.ctx = new AudioCtx();
+        this.bindLifecycle();
       }
-      if (this.ctx.state === 'suspended') {
-        void this.ctx.resume();
+      if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') {
+        void this.ctx.resume().catch(() => undefined);
       }
       return this.ctx;
     } catch {
